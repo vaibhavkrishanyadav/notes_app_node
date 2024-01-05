@@ -5,7 +5,7 @@ const Note = require("../models/notesModel");
 //@route GET /api/notes
 //@access private
 const getNotes = asyncHandler(async (req, res) => {
-    const notes = await Note.find({ owner_id: req.user.id });
+    const notes = await Note.find( {$or:[{ owner_id: req.user.id }, {sharedWith: req.user.id}]} ); 
     res.status(200).json(notes);
 });
 
@@ -83,8 +83,8 @@ const deleteNote = asyncHandler(async (req, res) => {
 });
 
 
-//@desc Get all notes
-//@route GET /api/notes
+//@desc Get all searched notes
+//@route GET /api/search/?q=<searched word>
 //@access private
 const searchNotes = asyncHandler(async (req, res) => {
     console.log(req.user.id);
@@ -92,4 +92,35 @@ const searchNotes = asyncHandler(async (req, res) => {
     res.status(200).json(notes);
 });
 
-module.exports = {getNotes, createNote, getNote, updateNote, deleteNote, searchNotes};
+//@desc Update notes
+//@route PUT /api/notes/:id
+//@access private
+const shareNote = asyncHandler(async (req, res) => {
+    console.log("The request body is :", req.body);
+    const { viewer_id } = req.body; 
+    if(!viewer_id) {
+        res.status(400);
+        throw new Error("Viewer ID not found");
+    }
+
+    const note = await Note.findById(req.params.id);
+    if(!note) {
+        res.status(404);
+        throw new Error("Note not found");
+    }
+
+    if( note.owner_id.toString() !== req.user.id) {
+        res.status(403);
+        throw new Error("User don't have permission to update other notes");
+    }
+
+    const updatedNote = await Note.findByIdAndUpdate(
+        req.params.id,
+        { "$push": { sharedWith: viewer_id } },
+        { new: true, "upsert": true }, 
+    );
+
+    res.status(200).json(updatedNote);
+});
+
+module.exports = {getNotes, createNote, getNote, updateNote, deleteNote, searchNotes, shareNote};

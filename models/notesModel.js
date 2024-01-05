@@ -15,7 +15,9 @@ const notesSchema = mongoose.Schema(
             type: String,
             required: [true, "Please add your notes"],
         },
-
+        sharedWith: [{
+            type: String,
+        }],
     }, 
     {
         timestamps: true,
